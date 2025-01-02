@@ -2,6 +2,8 @@ library(DESeq2)
 library(tidyverse)
 library(purrr)
 
+
+###A bigger loop list was used for background
 lbe_looplist=read.delim("lbe_converted.bedpe",header=FALSE,row.names = 14, sep='\t')
 lbw_looplist=read.delim("lbw_converted.bedpe",header=FALSE,row.names = 14, sep='\t')
 elooplist=read.delim("eloops_from_MJ_3.2k.bedpe",header=FALSE,row.names = 7, sep='\t')
