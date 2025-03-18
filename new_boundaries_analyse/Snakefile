@@ -1,0 +1,74 @@
+configfile: 'config.yaml'
+localrules: all
+
+SAMPLES = config['samples']
+GATK = expand('snp/{samples}.fixedRG.bam snp/{samples}.markdup.bam snp/{samples}.metrics.txt \
+		snp/{samples}.markdup.bai snp/{samples}.g.vcf'.split(), samples = SAMPLES)
+
+rule all:
+	input:
+		GATK
+
+rule fixedRG:
+	input:
+		"{samples}.sorted.bam"
+	output:
+		"snp/{samples}.fixedRG.bam"
+	params:
+		"{samples}"
+	conda:
+		"gatk"
+	shell:
+		"""
+		/Genomics/argo/users/xl5525/gatk/gatk-4.6.1.0/gatk AddOrReplaceReadGroups \
+			-I {input} \
+			-O {output} \
+			-RGID 1 -RGLB lib1 -RGPL illumina -RGPU unit1 -RGSM {params} \
+			--VALIDATION_STRINGENCY LENIENT
+		"""
+rule markup:
+	input:
+		"snp/{samples}.fixedRG.bam"
+	output:
+		"snp/{samples}.markdup.bam",
+		"snp/{samples}.metrics.txt"
+	conda:
+		"gatk"
+	shell:
+		"""
+		/Genomics/argo/users/xl5525/gatk/gatk-4.6.1.0/gatk MarkDuplicates \
+			-I {input} \
+			-O {output[0]} \
+			-M {output[1]}
+		"""
+
+rule index:
+	input:
+		"snp/{samples}.markdup.bam"
+	output:
+		touch("snp/{samples}.markdup.bai")
+	conda:
+		"gatk"
+	shell:
+		"""
+		/Genomics/argo/users/xl5525/gatk/gatk-4.6.1.0/gatk BuildBamIndex \
+			-I {input}
+		"""
+
+rule call:
+	input:
+		"snp/{samples}.markdup.bam"
+	output:
+		"snp/{samples}.g.vcf"
+	conda:
+		"gatk"
+	shell:
+		"""
+		export OMP_NUM_THREADS=16
+		/Genomics/argo/users/xl5525/gatk/gatk-4.6.1.0/gatk HaplotypeCaller \
+			-R /Genomics/levineshare/People/Xiao/dm6_index/dm6.fa \
+			-I {input} \
+			-O {output} \
+			-ERC GVCF \
+			--native-pair-hmm-threads 16 \
+		"""
